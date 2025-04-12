@@ -4,8 +4,14 @@ const express = require('express');
 const {db,createUserTable,addUser} = require('./database.js')
 const app  = express()
 const cors = require('cors');
-app.use(express.json())
-app.use(cors())
+app.use(express.json());
+// Configure CORS
+const corsOptions = {
+    origin: 'http://localhost:5500', //  frontend's URL
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Specify allowed HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
+};
+app.use(cors(corsOptions))
 
 app.get('/', (req, res) => {
     return res.json({
@@ -16,16 +22,20 @@ app.get('/', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
+    console.log(req.body, "request body")
     const user =  req.body
     addUser(user)
     console.log(req.body, "request body")
-    return res.json(user)
+    return res.status(201).json({
+        message: "user added successfully",
+    })
 });
 
 app.post('/login', (req, res) => {
     console.log(req.body, "request body")
-    return res.json({
-       
+    return res.status(201).json({
+        message: "user login successfully",
+        data: {name: "Sujal", age: 20}
     })
 });
 
