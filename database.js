@@ -38,7 +38,19 @@ const addUser = (user) => {
   stmt.run(user.firstName,user.lastName,user.email,user.password);
   stmt.finalize();
 }
+function checkEmail(email, callback){
+    const query = `select 1 from users where email = ? limit 1`
+    db.get(query,[email],(err,result)=>{
+        if (err) {
 
-module.exports = { db, createUserTable,addUser }
+        }
+       callback(result)
+       
+       
+    });
+
+}
+
+module.exports = { db, createUserTable,addUser,checkEmail}
 
 

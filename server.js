@@ -1,13 +1,13 @@
 const express = require('express');
 // console.log(express)
 
-const {db,createUserTable,addUser} = require('./database.js')
-const app  = express()
+const { db, createUserTable, addUser, checkEmail } = require('./database.js')
+const app = express()
 const cors = require('cors');
 app.use(express.json());
 // Configure CORS
 const corsOptions = {
-    origin: 'http://localhost:5500', //  frontend's URL
+    origin: 'http://localhost:5501', //  frontend's URL
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Specify allowed HTTP methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
 };
@@ -16,33 +16,42 @@ app.use(cors(corsOptions))
 app.get('/', (req, res) => {
     return res.json({
         message: "user fetched from database successfully",
-        data: {name: "Sujal", age: 20}
+        data: { name: "Sujal", age: 20 }
     })
 
 });
 
 app.post('/register', (req, res) => {
     console.log(req.body, "request body")
-    const user =  req.body
-    addUser(user)
-    console.log(req.body, "request body")
-    return res.status(201).json({
-        message: "user added successfully",
+    const user = req.body
+
+ checkEmail(user.email, (result) => {
+        if (result) {
+            return res.status(400).json({
+                error: "user already exist",
+            })
+        } else {
+            addUser(user)
+            return res.status(201).json({
+                message: "user registration is completed",
+            })
+        }
     })
+
 });
 
 app.post('/login', (req, res) => {
     console.log(req.body, "request body")
     return res.status(201).json({
         message: "user login successfully",
-        data: {name: "Sujal", age: 20}
+        data: { name: "Sujal", age: 20 }
     })
 });
 
-app.listen(3455, ()=> {
+app.listen(3455, () => {
     createUserTable(db)
-   
-    
+
+
     console.log("server started on port 3455")
 })
 
