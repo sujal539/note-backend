@@ -1,13 +1,13 @@
 const express = require('express');
 // console.log(express)
 
-const { db, createUserTable, addUser, checkEmail } = require('./database.js')
+const { db, createUserTable, addUser, checkEmail,checkAndGetEmail } = require('./database.js')
 const app = express()
 const cors = require('cors');
 app.use(express.json());
 // Configure CORS
 const corsOptions = {
-    origin: 'http://localhost:5501', //  frontend's URL
+    origin: 'http://127.0.0.1:5501', //  frontend's URL
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Specify allowed HTTP methods
     allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers
 };
@@ -25,6 +25,7 @@ app.post('/register', (req, res) => {
     console.log(req.body, "request body")
     const user = req.body
 
+
  checkEmail(user.email, (result) => {
         if (result) {
             return res.status(400).json({
@@ -41,11 +42,24 @@ app.post('/register', (req, res) => {
 });
 
 app.post('/login', (req, res) => {
-    console.log(req.body, "request body")
-    return res.status(201).json({
-        message: "user login successfully",
-        data: { name: "Sujal", age: 20 }
+    const body = req.body
+    checkAndGetEmail(body.email, (result) =>{
+       if(result){
+        const {password} = result
+        if(body.password === password){
+            return res.status(200).json({message: "Login Success"})
+        }else{
+            return res.status(401).json({message: "email or password incorrect"})
+        }
+        
+    }else{
+
+        return res.status(403).json({
+            message: "email or password incorrect"
+        });
+    }
     })
+    
 });
 
 app.listen(3455, () => {

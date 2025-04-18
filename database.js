@@ -51,6 +51,19 @@ function checkEmail(email, callback){
 
 }
 
-module.exports = { db, createUserTable,addUser,checkEmail}
+function checkAndGetEmail(email, callback){
+    const query = `select * from users where email = ?`
+    db.get(query,[email],(err,result)=>{
+        if (err) {
+
+        }
+       callback(result)
+       
+       
+    });
+
+}
+
+module.exports = { db, createUserTable,addUser,checkEmail,checkAndGetEmail}
 
 
