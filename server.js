@@ -41,17 +41,29 @@ app.post('/register', (req, res) => {
 
 });
 
+app.post('/note', (req,res) => {
+    const body = req.body
+    if(!body || !body.title || !body.content ){
+        return res.status(400).json({error: 'all fields are required'})
+    }
+
+
+
+
+})
+
 app.post('/login', (req, res) => {
     const body = req.body
     checkAndGetEmail(body.email, (result) =>{
        if(result){
         const {password} = result
         if(body.password === password){
+            res.cookie('user-id',  )
             return res.status(200).json({message: "Login Success"})
         }else{
             return res.status(401).json({message: "email or password incorrect"})
         }
-        
+
     }else{
 
         return res.status(403).json({
