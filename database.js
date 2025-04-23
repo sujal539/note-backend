@@ -62,6 +62,14 @@ const createUserTable = (db) => {
     });
 
 }
+const createSessionTable = (db) => {
+    db.serialize(() => {
+        db.run("CREATE TABLE IF NOT EXISTS session  (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, user_id INTEGER NOT NULL,  FOREIGN KEY (user_id) REFERENCES users(id)  )", (err) => { console.log(err) })
+    });
+
+}
+
+
 const addUser = (user) => {
     const stmt = db.prepare("INSERT INTO users(first_name,last_name,email,password) VALUES(?,?,?,?)");
     stmt.run(user.firstName, user.lastName, user.email, user.password);
@@ -101,6 +109,6 @@ function checkAndGetEmail(email, callback) {
 
 }
 
-module.exports = { db, addNote, createUserTable, addUser, checkEmail, checkAndGetEmail, createNoteTableWithForeignKey }
+module.exports = { db, addNote, createUserTable, addUser, checkEmail, checkAndGetEmail, createNoteTableWithForeignKey,createSessionTable }
 
 
