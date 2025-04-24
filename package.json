@@ -4,7 +4,7 @@
   "description": "note backend",
   "main": "server.js",
   "scripts": {
-    "start" : "node --watch server.js"
+    "start": "node --watch server.js"
   },
   "keywords": [
     "express",
@@ -13,6 +13,7 @@
   "author": "sujal gupta",
   "license": "ISC",
   "dependencies": {
+    "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "express": "^4.21.2",
     "sqlite3": "^5.1.7"
