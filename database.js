@@ -1,4 +1,5 @@
 const sqlite = require('sqlite3').verbose();
+const bcrypt = require('bcrypt')
 
 
 
@@ -70,9 +71,11 @@ const createSessionTable = (db) => {
 }
 
 
-const addUser = (user) => {
+const addUser = async(user) => {
+    
+    const hashedPass = await bcrypt.hash(user.password,16)
     const stmt = db.prepare("INSERT INTO users(first_name,last_name,email,password) VALUES(?,?,?,?)");
-    stmt.run(user.firstName, user.lastName, user.email, user.password);
+    stmt.run(user.firstName, user.lastName, user.email, hashedPass);
     stmt.finalize();
 }
 

@@ -1,18 +1,24 @@
 const express = require('express');
 // console.log(express)
+const bcrypt = require('bcrypt')
 
-const { db, createUserTable, addUser, checkEmail, checkAndGetEmail, createSessionTable } = require('./database.js')
+const { db, createUserTable, addUser, checkEmail, checkAndGetEmail, createSessionTable, createNoteTableWithForeignKey } = require('./database.js')
 const app = express()
 const cors = require('cors');
 app.use(express.json());
 // Configure CORS
-const corsOptions = {
-    origin: 'http://localhost:5501', //  frontend's URL
-    // methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'], // Specify allowed HTTP methods
-    // allowedHeaders: ['Content-Type', 'Authorization'], // Specify allowed headers,
+const allowedOrigins = ['http://localhost:5501','http://127.0.0.1:5501','http://127.0.0.1:5500','http://localhost:5500']
+app.use(cors({
+    origin:(origin,callback) => {
+        if(!origin || allowedOrigins.indexOf(origin) !== -1 ){
+            callback(null,true)
+        }
+        else{
+            callback(new Error('cors policy violation'),false)
+        }
+    },
     credentials: true // allow cookies to be sent
-};
-app.use(cors(corsOptions))
+}))
 
 app.get('/', (req, res) => {
     return res.json({
@@ -57,10 +63,11 @@ const SESSION_NAME = "session_id"
 
 app.post('/login', (req, res) => {
     const body = req.body
-    checkAndGetEmail(body.email, (result) => {
+    checkAndGetEmail(body.email, async(result) => {
         if (result) {
             const { password } = result
-            if (body.password === password) {
+           
+            if (await bcrypt.compare(body.password,password)) {
                 res.cookie(SESSION_NAME, "hello", {
                     httpOnly: false,
                     sameSite: 'lax', // or 'strict'
@@ -84,7 +91,7 @@ app.post('/login', (req, res) => {
 
 app.listen(3455, () => {
     createUserTable(db)
-
+    createNoteTableWithForeignKey('notes')
     createSessionTable(db)
     console.log("server started on port 3455")
 })
