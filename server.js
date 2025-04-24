@@ -53,6 +53,11 @@ app.post('/note', (req, res) => {
     if (!body || !body.title || !body.content) {
         return res.status(400).json({ error: 'all fields are required' })
     }
+    const stmt = db.prepare('insert into notes(title,content, uid)values(?,?, ?)');
+    stmt.run(body.title,body.content, 5)
+    stmt.finalize();
+    return res.status(200).json({ message: 'Success' })
+
 
 
 
