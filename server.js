@@ -2,7 +2,7 @@ const express = require('express');
 // console.log(express)
 const bcrypt = require('bcrypt')
 
-const { db, createUserTable, addUser, checkEmail, checkAndGetEmail, createSessionTable, createNoteTableWithForeignKey } = require('./database.js')
+const { db, createUserTable, addUser, checkEmail, checkAndGetEmail, createSessionTable, createNoteTableWithForeignKey,getAllNotes } = require('./database.js')
 const app = express()
 const cors = require('cors');
 app.use(express.json());
@@ -47,6 +47,17 @@ app.post('/register', (req, res) => {
     })
 
 });
+
+app.get('/notes',async(req,res) => {
+    const result = getAllNotes(db, (result) => {
+        console.log(result, "result")
+        return res.status(200).json(result)
+    },(err) => {
+        console.log(err)
+        return res.status(500).send()
+    })
+    
+})
 
 app.post('/note', (req, res) => {
     const body = req.body
@@ -96,7 +107,7 @@ app.post('/login', (req, res) => {
 
 app.listen(3455, () => {
     createUserTable(db)
-    createNoteTableWithForeignKey('notes')
+    // createNoteTableWithForeignKey('notes')
     createSessionTable(db)
     console.log("server started on port 3455")
 })

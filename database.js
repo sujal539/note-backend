@@ -69,6 +69,20 @@ const createSessionTable = (db) => {
     });
 
 }
+const getAllNotes = (db,callback,onFailure) => {
+    //get userid
+    const uid = 5
+    const query = `select * from notes where uid = ?`
+    db.all(query, [uid], (err, result) => {
+        if (err) {
+            onFailure(err,"werr")
+        }
+        console.log(result,'db-result')
+        callback(result)
+
+
+    });
+}
 
 
 const addUser = async(user) => {
@@ -105,6 +119,7 @@ function checkAndGetEmail(email, callback) {
         if (err) {
 
         }
+
         callback(result)
 
 
@@ -112,6 +127,6 @@ function checkAndGetEmail(email, callback) {
 
 }
 
-module.exports = { db, addNote, createUserTable, addUser, checkEmail, checkAndGetEmail, createNoteTableWithForeignKey,createSessionTable }
+module.exports = { db, addNote, createUserTable, addUser, checkEmail, checkAndGetEmail, createNoteTableWithForeignKey,createSessionTable,getAllNotes }
 
 
