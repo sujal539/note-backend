@@ -1,5 +1,6 @@
 const express = require('express');
 // console.log(express)
+const crypto = require('crypto')
 const bcrypt = require('bcrypt')
 
 const { db, createUserTable, addUser, checkEmail, checkAndGetEmail, createSessionTable, createNoteTableWithForeignKey,getAllNotes } = require('./database.js')
@@ -21,6 +22,7 @@ app.use(cors({
 }))
 
 app.get('/', (req, res) => {
+
     return res.json({
         message: "user fetched from database successfully",
         data: { name: "Sujal", age: 20 }
@@ -49,6 +51,8 @@ app.post('/register', (req, res) => {
 });
 
 app.get('/notes',async(req,res) => {
+     const cookies = req.headers['cookie']
+    const token = cookies.split('=')[1]
     const result = getAllNotes(db, (result) => {
         console.log(result, "result")
         return res.status(200).json(result)
@@ -79,17 +83,28 @@ const SESSION_NAME = "session_id"
 
 app.post('/login', (req, res) => {
     const body = req.body
+
+    if(!body || !body.email || !body.password)
+        return res.status(400).json({message:'username or password invalid'})
+
     checkAndGetEmail(body.email, async(result) => {
         if (result) {
             const { password } = result
-           
+            const token = crypto.randomUUID()
             if (await bcrypt.compare(body.password,password)) {
-                res.cookie(SESSION_NAME, "hello", {
+                res.cookie(SESSION_NAME, token, {
                     httpOnly: false,
                     sameSite: 'lax', // or 'strict'
                     secure: false,   // must be false on HTTP
                     expires: new Date(Date.now() + 900000)
                 })
+
+                const stmt = db.prepare('insert into session(token, user_id) values(?, ?)')
+
+                stmt.run(token, result.id )
+                stmt.finalize()
+
+
                 res.status(200).json({ message: "Login Success" })
             } else {
                 return res.status(401).json({ message: "email or password incorrect" })
@@ -98,17 +113,21 @@ app.post('/login', (req, res) => {
         } else {
 
             return res.status(403).json({
-                message: "email or password incorrect"
+                message: "email account not found"
             });
         }
-    })
+    }, (err) =>{
+        return res.status(501).json({
+            message: "internal server error"
+        });
+    } )
 
 });
 
 app.listen(3455, () => {
-    createUserTable(db)
+    // createUserTable(db)
     // createNoteTableWithForeignKey('notes')
-    createSessionTable(db)
+    // createSessionTable(db)
     console.log("server started on port 3455")
 })
 
