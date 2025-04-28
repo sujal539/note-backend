@@ -35,36 +35,6 @@ app.use(express.urlencoded({ extended: true }))
  * * If the session is valid, it calls the next middleware function. Otherwise, it returns a 401 Unauthorized response.
  * 
  */
-app.use((req, res, next) => {
-    const session_id = req.cookies.session_id
-    if (!session_id) {
-        return res.status(401).json({
-            message: "unauthorized"
-        })
-    }
-    const query = `select * from session where token = ?`
-    db.get(query, [session_id], (err, result) => {
-        if (err) {
-            return res.status(500).json({
-                message: "internal server error"
-            })
-        }
-        if (!result) {
-            return res.status(401).json({
-                message: "unauthorized"
-            })
-        }
-        // console.log(result, "result")
-        req.userId = result
-        next()
-    })
-    // console.log(req.cookies, "cookies")
-    // console.log(req.headers, "headers")
-    // console.log(req.query, "query")
-    // console.log(req.params, "params"
-    console.log(req.method, req.url, req.body)
-    next()
-})
 
 
 
@@ -112,7 +82,7 @@ app.post('/login', (req, res) => {
                 stmt.finalize()
 
 
-                res.status(200).json({ message: "Login Success" })
+                res.status(200).json({ message: "Login Success",  data : {userId: result.id.toString()}})
             } else {
                 return res.status(401).json({ message: "email or password incorrect" })
             }
@@ -131,6 +101,43 @@ app.post('/login', (req, res) => {
 
 });
 
+app.use((req, res, next) => {
+    if (!req.cookies) {
+        return res.status(401).json({
+            message: "unauthorized"
+        })  
+    }
+    const session_id = req.cookies.session_id
+    if (!session_id) {
+        return res.status(401).json({
+            message: "unauthorized"
+        })
+    }
+    const query = `select * from session where token = ?`
+    db.get(query, [session_id], (err, result) => {
+        if (err) {
+            return res.status(500).json({
+                message: "internal server error"
+            })
+        }
+       // if (result===undefined || result===null) {
+        if (!result) {
+            return res.status(401).json({
+                message: "unauthorized"
+            })
+        }
+        // console.log(result, "result")
+        req.user = result
+        console.log(req.method, req.url, req.body)
+        next()
+    })
+    // console.log(req.cookies, "cookies")
+    // console.log(req.headers, "headers")
+    // console.log(req.query, "query")
+    // console.log(req.params, "params"
+   
+})
+
 app.get('/', (req, res) => {
 
     return res.json({
@@ -143,9 +150,8 @@ app.get('/', (req, res) => {
 
 
 app.get('/notes',async(req,res) => {
-     const cookies = req.headers['cookie']
-    const token = cookies.split('=')[1]
-    const result = getAllNotes(db, (result) => {
+    const userId = req.user.user_id
+    getAllNotes(db,userId, (result) => {
         console.log(result, "result")
         return res.status(200).json(result)
     },(err) => {
@@ -156,12 +162,13 @@ app.get('/notes',async(req,res) => {
 })
 
 app.post('/note', (req, res) => {
+    const userId = req.user.user_id         
     const body = req.body
     if (!body || !body.title || !body.content) {
         return res.status(400).json({ error: 'all fields are required' })
     }
     const stmt = db.prepare('insert into notes(title,content, uid)values(?,?, ?)');
-    stmt.run(body.title,body.content, 5)
+    stmt.run(body.title,body.content, userId)
     stmt.finalize();
     return res.status(200).json({ message: 'Success' })
 

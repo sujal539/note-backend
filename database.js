@@ -89,20 +89,18 @@ initializeDatabase(db);
 /**
  * @description This function gets all notes from the database
  * @param {sqlite.Database} db - The database connection object.
- * @param {function} callback - The callback function to handle the result.
+ * @param {function} success - The callback function to handle the result.
  * @param {function} onFailure - The callback function to handle errors.
  * @returns {void}
  */
-const getAllNotes = (db, callback, onFailure) => {
-    //get userid
-    const uid = 5
+const getAllNotes = (db, userId, success, onFailure) => {
     const query = `select * from notes where uid = ?`
-    db.all(query, [uid], (err, result) => {
+    db.all(query, [userId], (err, result) => {
         if (err) {
             onFailure(err, "werr")
         }
         console.log(result, 'db-result')
-        callback(result)
+        success(result)
     });
 }
 
