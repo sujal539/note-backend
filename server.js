@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt')
 const { db, createUserTable, addUser, checkEmail, checkAndGetEmail, createSessionTable, createNoteTableWithForeignKey,getAllNotes } = require('./database.js')
 const app = express()
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 app.use(express.json());
 // Configure CORS
 const allowedOrigins = ['http://localhost:5501','http://127.0.0.1:5501','http://127.0.0.1:5500','http://localhost:5500']
@@ -19,16 +20,53 @@ app.use(cors({
         }
     },
     credentials: true // allow cookies to be sent
-}))
+}));
 
-app.get('/', (req, res) => {
-
-    return res.json({
-        message: "user fetched from database successfully",
-        data: { name: "Sujal", age: 20 }
+app.use(cookieParser())
+app.use(express.urlencoded({ extended: true }))
+/**
+ * * Middleware to check authentication session
+ * * @param {Request} req   - The request object.
+ * * @param {Response} res  - The response object.
+ * * @param {Function} next - The next middleware function.
+ * * @returns {void}
+ * * @throws {Error} If the session is invalid or expired.
+ * * @description This middleware checks if the user is authenticated by verifying the session token.
+ * * If the session is valid, it calls the next middleware function. Otherwise, it returns a 401 Unauthorized response.
+ * 
+ */
+app.use((req, res, next) => {
+    const session_id = req.cookies.session_id
+    if (!session_id) {
+        return res.status(401).json({
+            message: "unauthorized"
+        })
+    }
+    const query = `select * from session where token = ?`
+    db.get(query, [session_id], (err, result) => {
+        if (err) {
+            return res.status(500).json({
+                message: "internal server error"
+            })
+        }
+        if (!result) {
+            return res.status(401).json({
+                message: "unauthorized"
+            })
+        }
+        // console.log(result, "result")
+        req.userId = result
+        next()
     })
+    // console.log(req.cookies, "cookies")
+    // console.log(req.headers, "headers")
+    // console.log(req.query, "query")
+    // console.log(req.params, "params"
+    console.log(req.method, req.url, req.body)
+    next()
+})
 
-});
+
 
 app.post('/register', (req, res) => {
     console.log(req.body, "request body")
@@ -49,37 +87,6 @@ app.post('/register', (req, res) => {
     })
 
 });
-
-app.get('/notes',async(req,res) => {
-     const cookies = req.headers['cookie']
-    const token = cookies.split('=')[1]
-    const result = getAllNotes(db, (result) => {
-        console.log(result, "result")
-        return res.status(200).json(result)
-    },(err) => {
-        console.log(err)
-        return res.status(500).send()
-    })
-    
-})
-
-app.post('/note', (req, res) => {
-    const body = req.body
-    if (!body || !body.title || !body.content) {
-        return res.status(400).json({ error: 'all fields are required' })
-    }
-    const stmt = db.prepare('insert into notes(title,content, uid)values(?,?, ?)');
-    stmt.run(body.title,body.content, 5)
-    stmt.finalize();
-    return res.status(200).json({ message: 'Success' })
-
-
-
-
-
-})
-
-const SESSION_NAME = "session_id"
 
 app.post('/login', (req, res) => {
     const body = req.body
@@ -124,10 +131,51 @@ app.post('/login', (req, res) => {
 
 });
 
+app.get('/', (req, res) => {
+
+    return res.json({
+        message: "user fetched from database successfully",
+        data: { name: "Sujal", age: 20 }
+    })
+
+});
+
+
+
+app.get('/notes',async(req,res) => {
+     const cookies = req.headers['cookie']
+    const token = cookies.split('=')[1]
+    const result = getAllNotes(db, (result) => {
+        console.log(result, "result")
+        return res.status(200).json(result)
+    },(err) => {
+        console.log(err)
+        return res.status(500).send()
+    })
+    
+})
+
+app.post('/note', (req, res) => {
+    const body = req.body
+    if (!body || !body.title || !body.content) {
+        return res.status(400).json({ error: 'all fields are required' })
+    }
+    const stmt = db.prepare('insert into notes(title,content, uid)values(?,?, ?)');
+    stmt.run(body.title,body.content, 5)
+    stmt.finalize();
+    return res.status(200).json({ message: 'Success' })
+
+
+
+
+
+})
+
+const SESSION_NAME = "session_id"
+
+
+
 app.listen(3455, () => {
-    // createUserTable(db)
-    // createNoteTableWithForeignKey('notes')
-    // createSessionTable(db)
     console.log("server started on port 3455")
 })
 
