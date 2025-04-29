@@ -101,6 +101,22 @@ app.post('/login', (req, res) => {
 
 });
 
+function x (req, res){
+    if (!req.cookies) {
+        return res.status(401).json({
+            message: "unauthorized"
+        })  
+    }
+    const session_id = req.cookies.session_id
+    if (!session_id) {
+        return res.status(401).json({
+            message: "unauthorized"
+        })
+    }
+    res.send()
+}
+app.get("/me", x)
+
 app.use((req, res, next) => {
     if (!req.cookies) {
         return res.status(401).json({
@@ -137,6 +153,11 @@ app.use((req, res, next) => {
     // console.log(req.params, "params"
    
 })
+
+app.post("/logout",(req,res)=>{
+    return res.status(200) 
+})
+
 
 app.get('/', (req, res) => {
 
