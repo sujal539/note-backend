@@ -155,7 +155,8 @@ app.use((req, res, next) => {
 })
 
 app.post("/logout",(req,res)=>{
-    return res.status(200) 
+    res.clearCookie(SESSION_NAME, { path: '/' }); 
+    return res.status(200).send("Logout successful!") 
 })
 
 

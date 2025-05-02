@@ -1,4 +1,4 @@
-const sqlite = require('sqlite3').verbose();
+const mysql = require('mysql')
 const bcrypt = require('bcrypt')
 
 
@@ -9,7 +9,24 @@ const bcrypt = require('bcrypt')
  * @returns {void}
  */
 const createUserTable = (db) => {
-    db.run("CREATE TABLE IF NOT EXISTS users  (id INTEGER PRIMARY KEY AUTOINCREMENT, first_name TEXT NOT NULL, last_name TEXT NOT NULL,email TEXT UNIQUE NOT NULL, password TEXT NOT NULL )", (err) => { console.log(err) })
+    const query = `
+        CREATE TABLE IF NOT EXISTS users (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            first_name VARCHAR(255) NOT NULL,
+            last_name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        );
+    `;
+
+    db.query(query, (err, results) => {
+        if (err) {
+            console.error("Error creating users table:", err);
+        } else {
+            console.log("Users table created successfully.");
+        }
+    });
+    
 }
 
 /**
@@ -18,7 +35,7 @@ const createUserTable = (db) => {
  * @returns {void}
  */
 function createNoteTable(tableName) {
-    db.run(`CREATE TABLE IF NOT EXISTS ${tableName} (
+    db.query(`CREATE TABLE IF NOT EXISTS ${tableName} (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
             content TEXT,
@@ -59,8 +76,22 @@ const createDatabaseConnection = (dbPath) => {
     return db;
 };
 
+const createMysqlDbConnection = () => {
+     const connection = mysql.createConnection({
+        host     : 'localhost',
+        user     : 'sujal',
+        password : 'password',
+        database : 'notes'
+      });
+      connection.query()
+      connection.connect();
+      return connection
+}
+
+   
 // create a database connection
-const db = createDatabaseConnection('./note.db');
+// const db = createDatabaseConnection('./note.db');
+const db = createMysqlDbConnection()
 
 /**
  * 
@@ -73,15 +104,13 @@ const db = createDatabaseConnection('./note.db');
  */
 
 function initializeDatabase(db) {
-    db.serialize(() => {
-        db.run("PRAGMA foreign_keys = ON"); // need to enable foreign key support
-        createUserTable(db);
-        createSessionTable(db);
-        createNoteTable(db, 'notes');
-    });
+    createUserTable(db);
+    createSessionTable(db);
+    createNoteTable('notes');
 }
 
 initializeDatabase(db);
+
 
 
 
@@ -94,58 +123,67 @@ initializeDatabase(db);
  * @returns {void}
  */
 const getAllNotes = (db, userId, success, onFailure) => {
-    const query = `select * from notes where uid = ?`
-    db.all(query, [userId], (err, result) => {
+    const query = `SELECT * FROM notes WHERE uid = ?`;
+    db.query(query, [userId], (err, results) => {
         if (err) {
-            onFailure(err, "werr")
+            return onFailure(err, "Query error");
         }
-        console.log(result, 'db-result')
-        success(result)
+        console.log(results, 'db-result');
+        success(results);
     });
-}
-
+};
 
 const addUser = async (user) => {
-    const hashedPass = await bcrypt.hash(user.password, 16)
-    const stmt = db.prepare("INSERT INTO users(first_name,last_name,email,password) VALUES(?,?,?,?)");
-    stmt.run(user.firstName, user.lastName, user.email, hashedPass);
-    stmt.finalize();
-}
+    const hashedPass = await bcrypt.hash(user.password, 16);
+    const query = "INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?)";
+    db.query(query, [user.firstName, user.lastName, user.email, hashedPass], (err, results) => {
+        if (err) {
+            console.error("Error adding user:", err);
+        } else {
+            console.log("User added successfully.");
+        }
+    });
+};
 
-const addNote = (notes) => {
-    const stmt = db.prepare("INSERT INTO notes(title,content,uid) VALUES(?,?,?)");
-    stmt.run(notes.title, notes.content, notes.uid);
-    stmt.finalize();
-}
-
+const addNote = (note) => {
+    const query = "INSERT INTO notes (title, content, uid) VALUES (?, ?, ?)";
+    db.query(query, [note.title, note.content, note.uid], (err, results) => {
+        if (err) {
+            console.error("Error adding note:", err);
+        } else {
+            console.log("Note added successfully.");
+        }
+    });
+};
 
 function checkEmail(email, callback) {
-    const query = `select 1 from users where email = ? limit 1`
-    db.get(query, [email], (err, result) => {
+    const query = `SELECT 1 FROM users WHERE email = ? LIMIT 1`;
+    db.query(query, [email], (err, results) => {
         if (err) {
-
+            console.error("Error checking email:", err);
+            return callback(null);
         }
-        callback(result)
-
-
+        callback(results.length > 0 ? results[0] : null);
     });
-
 }
 
 function checkAndGetEmail(email, callback, error) {
-    const query = `select * from users where email = ?`
-    db.get(query, [email], (err, result) => {
-        if (err) {
-            error(err)
-        }
-
-        callback(result)
-
-
+    const query = `SELECT * FROM users WHERE email = ?`;
+    db.query(query, [email], (err, results) => {
+        if (err) return error(err);
+        if (!results.length) return error(new Error("No user found"));
+        callback(results[0]);
     });
-
 }
 
-module.exports = { db, addNote, createUserTable, addUser, checkEmail, checkAndGetEmail, createNoteTableWithForeignKey: createNoteTable, createSessionTable, getAllNotes }
-
-
+module.exports = {
+    db,
+    addNote,
+    createUserTable,
+    addUser,
+    checkEmail,
+    checkAndGetEmail,
+    createNoteTableWithForeignKey: createNoteTable,
+    createSessionTable,
+    getAllNotes
+};
