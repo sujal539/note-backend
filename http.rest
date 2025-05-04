@@ -1,0 +1,27 @@
+POST http://localhost:3455/auth/register HTTP/1.1
+content-type: application/json
+
+{
+    "firstName": "test",
+    "lastName" : "test",
+    "email": "test@gmail.com",
+    "password" : "test"
+}
+
+###
+POST http://localhost:3455/auth/login HTTP/1.1
+content-type: application/json
+
+{
+    "email": "test@gmail.com",
+    "password" : "test"
+}
+
+###
+POST http://localhost:3455/auth/notes HTTP/1.1
+content-type: application/json
+
+{
+    "email": "test@gmail.com",
+    "password" : "test"
+}

@@ -4,11 +4,10 @@ const bcrypt = require('bcrypt')
 
 /**
  * 
- * @param {*} db 
  * @description This function creates a user table
  * @returns {void}
  */
-const createUserTable = (db) => {
+const createUserTable = () => {
     const query = `
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -26,72 +25,54 @@ const createUserTable = (db) => {
             console.log("Users table created successfully.");
         }
     });
-    
+
 }
 
 /**
- * @param {*} tableName 
  * @description This function creates a note table with foreign key
  * @returns {void}
  */
-function createNoteTable(tableName) {
-    db.query(`CREATE TABLE IF NOT EXISTS ${tableName} (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+function createNoteTable() {
+    db.query(`CREATE TABLE IF NOT EXISTS notes (
+            id INTEGER PRIMARY KEY AUTO_INCREMENT,
             title TEXT NOT NULL,
             content TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             uid INTEGER NOT NULL,
             FOREIGN KEY (uid) REFERENCES users(id)
         );`);
-    console.log(`Table ${tableName} created successfully.`);
+
 }
 
 /**
  * 
- * @param {*} db 
  * @description This function creates a session table
  * @returns {void}
  */
-const createSessionTable = (db) => {
-    db.run("CREATE TABLE IF NOT EXISTS session  (id INTEGER PRIMARY KEY AUTOINCREMENT, token TEXT UNIQUE NOT NULL, user_id INTEGER NOT NULL,  FOREIGN KEY (user_id) REFERENCES users(id)  )", (err) => { console.log(err) })
+const createSessionTable = () => {
+    db.query("CREATE TABLE IF NOT EXISTS session  (id INTEGER PRIMARY KEY AUTO_INCREMENT, token TEXT UNIQUE NOT NULL, user_id INTEGER NOT NULL,  FOREIGN KEY (user_id) REFERENCES users(id)  )", (err) => { console.log(err) })
 }
 
-
-/**
- * @description this function creates a database connection
- * @param {string} dbPath - The path to the database file.
- * @returns {sqlite.Database} - The database connection object.
- * @throws {Error} - If there is an error opening the database.
- * @example
- * const db = createDatabaseConnection('path/to/database.db');  
- */
-const createDatabaseConnection = (dbPath) => {
-    const db = new sqlite.Database(dbPath, (err) => {
-        if (err) {
-            console.error('Error opening database ' + err.message);
-        } else {
-            console.log('Connected to the SQLite database.');
-        }
-    });
-    return db;
-};
 
 const createMysqlDbConnection = () => {
-     const connection = mysql.createConnection({
-        host     : 'localhost',
-        user     : 'sujal',
-        password : 'password',
-        database : 'notes'
-      });
-      connection.query()
-      connection.connect();
-      return connection
+    const connection = mysql.createConnection({
+        host: 'localhost',
+        user: process.env.DATABASE_USER,
+        password: process.env.DATABASE_PASS,
+        database: process.env.DATABASE_NAME,
+    });
+
+
+    connection.connect(err => {
+        if (err) console.log("error connecting to database " + err);
+    });
+    return connection
 }
 
-   
+
 // create a database connection
 // const db = createDatabaseConnection('./note.db');
-const db = createMysqlDbConnection()
+const db = createMysqlDbConnection();
 
 /**
  * 
@@ -103,16 +84,12 @@ const db = createMysqlDbConnection()
  * createNoteTableWithForeignKey('notes');
  */
 
-function initializeDatabase(db) {
-    createUserTable(db);
-    createSessionTable(db);
-    createNoteTable('notes');
+function initializeDatabase() {
+    // db.query('CREATE DATABASE IF NOT EXISTS ' + process.env.DATABASE_NAME)
+    createUserTable();
+    createSessionTable();
+    createNoteTable();
 }
-
-initializeDatabase(db);
-
-
-
 
 
 /**
@@ -122,65 +99,95 @@ initializeDatabase(db);
  * @param {function} onFailure - The callback function to handle errors.
  * @returns {void}
  */
-const getAllNotes = (db, userId, success, onFailure) => {
+/**
+ * get all notes for a user with user id
+ * @param {*} userId 
+ * @returns 
+ */
+const getAllNotes = async (userId) => {
     const query = `SELECT * FROM notes WHERE uid = ?`;
-    db.query(query, [userId], (err, results) => {
-        if (err) {
-            return onFailure(err, "Query error");
-        }
-        console.log(results, 'db-result');
-        success(results);
-    });
+    return await asyncQuery(query, [userId])
 };
 
-const addUser = async (user) => {
-    const hashedPass = await bcrypt.hash(user.password, 16);
-    const query = "INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?)";
-    db.query(query, [user.firstName, user.lastName, user.email, hashedPass], (err, results) => {
-        if (err) {
-            console.error("Error adding user:", err);
-        } else {
-            console.log("User added successfully.");
-        }
-    });
-};
-
-const addNote = (note) => {
+/**
+ * create note for a user
+ * @param {*} note 
+ * @returns 
+ */
+const addNote = async (note) => {
     const query = "INSERT INTO notes (title, content, uid) VALUES (?, ?, ?)";
-    db.query(query, [note.title, note.content, note.uid], (err, results) => {
-        if (err) {
-            console.error("Error adding note:", err);
-        } else {
-            console.log("Note added successfully.");
-        }
-    });
+    return  await asyncQuery.query(query, [note.title, note.content, note.uid])
 };
 
-function checkEmail(email, callback) {
-    const query = `SELECT 1 FROM users WHERE email = ? LIMIT 1`;
-    db.query(query, [email], (err, results) => {
-        if (err) {
-            console.error("Error checking email:", err);
-            return callback(null);
-        }
-        callback(results.length > 0 ? results[0] : null);
+/**
+ * edit note
+ * @param {*} userId 
+ * @param {*} noteId 
+ * @returns 
+ */
+const updateNoteInDb = async (userId, noteId, note) => {
+    const query = `UPDATE notes SET title = ?, content = ?, WHERE id = ? AND uid = ?;`
+    return await asyncQuery(query, [note.title, note.content, noteId, userId])
+};
+
+/**
+ * delete note
+ * @param {*} userId 
+ * @param {*} noteId 
+ * @returns 
+ */
+const deleteNoteFromDb = async (userId, noteId) => {
+    const query = `DELETE FROM notes WHERE uid = ? AND id = ?`;
+    return await asyncQuery(query, [userId, noteId])
+};
+
+
+const asyncQuery = (query, params) => {
+    return new Promise((resolve, reject) => {
+        db.query(query, params, (err, result) => {
+            if (err)
+                reject(err)
+
+            if (result === undefined || result === null) {
+                return reject(new Error("Unknown error occurred"));
+            }
+            resolve(result)
+        });
     });
 }
 
-function checkAndGetEmail(email, callback, error) {
+const addUser = async (user) => {
+    const hashedPass = await bcrypt.hash(user.password, 10);
+    const query = "INSERT INTO users (first_name, last_name, email, password) VALUES (?, ?, ?, ?)";
+    return await asyncQuery(query, [user.firstName, user.lastName, user.email, hashedPass])
+};
+
+
+
+async function checkEmail(email) {
+    const query = `SELECT 1 FROM users WHERE email = ? LIMIT 1`;
+    return await asyncQuery(query, [email])
+}
+
+async function createSession(token, userId) {
+    const query = "INSERT INTO session(token, user_id) VALUES(?, ?)"
+    return await asyncQuery(query, [token, userId])
+}
+
+async function checkAndGetEmail(email) {
     const query = `SELECT * FROM users WHERE email = ?`;
-    db.query(query, [email], (err, results) => {
-        if (err) return error(err);
-        if (!results.length) return error(new Error("No user found"));
-        callback(results[0]);
-    });
+    return await asyncQuery(query, [email])
 }
 
 module.exports = {
     db,
     addNote,
     createUserTable,
+    initializeDatabase,
+    createSession,
     addUser,
+    updateNoteInDb,
+    deleteNoteFromDb,
     checkEmail,
     checkAndGetEmail,
     createNoteTableWithForeignKey: createNoteTable,
