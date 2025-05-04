@@ -116,7 +116,7 @@ const getAllNotes = async (userId) => {
  */
 const addNote = async (note) => {
     const query = "INSERT INTO notes (title, content, uid) VALUES (?, ?, ?)";
-    return  await asyncQuery.query(query, [note.title, note.content, note.uid])
+    return  await asyncQuery(query, [note.title, note.content, note.uid])
 };
 
 /**
@@ -126,7 +126,7 @@ const addNote = async (note) => {
  * @returns 
  */
 const updateNoteInDb = async (userId, noteId, note) => {
-    const query = `UPDATE notes SET title = ?, content = ?, WHERE id = ? AND uid = ?;`
+    const query = `UPDATE notes SET title = ?, content = ? WHERE id = ? AND uid = ?;`
     return await asyncQuery(query, [note.title, note.content, noteId, userId])
 };
 
@@ -141,7 +141,7 @@ const deleteNoteFromDb = async (userId, noteId) => {
     return await asyncQuery(query, [userId, noteId])
 };
 
-
+// use this function to call any query
 const asyncQuery = (query, params) => {
     return new Promise((resolve, reject) => {
         db.query(query, params, (err, result) => {
@@ -178,9 +178,14 @@ async function checkAndGetEmail(email) {
     const query = `SELECT * FROM users WHERE email = ?`;
     return await asyncQuery(query, [email])
 }
+async function validate(token){
+    const query = `select * from session where token = ?`
+    return await asyncQuery(query, [token])
+}
 
 module.exports = {
     db,
+    validate,
     addNote,
     createUserTable,
     initializeDatabase,

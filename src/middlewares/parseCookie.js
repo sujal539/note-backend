@@ -10,11 +10,13 @@
  * 
  */
 
+const { validate } = require("../../database");
+
 const isAuthenticated = (async (req, res, next) => {
     if (!req.cookies) {
         return res.status(401).json({
             message: "unauthorized"
-        })  
+        })
     }
     const session_id = req.cookies.session_id
     if (!session_id) {
@@ -22,24 +24,14 @@ const isAuthenticated = (async (req, res, next) => {
             message: "unauthorized"
         })
     }
-    const query = `select * from session where token = ?`
-    db.get(query, [session_id], (err, result) => {
-        if (err) {
-            return res.status(500).json({
-                message: "internal server error"
-            })
-        }
-       // if (result===undefined || result===null) {
-        if (!result) {
-            return res.status(401).json({
-                message: "unauthorized"
-            })
-        }
-        // console.log(result, "result")
-        req.user = result
-        console.log(req.method, req.url, req.body)
+    try {
+        const foundSession = await validate(session_id)
+        req.user = foundSession[0]
         next()
-    })
+
+    } catch (error) {
+        return res.status(500).json({message: "Internal server error"})
+    }
    
 });
 

@@ -21,7 +21,7 @@ const createNote = async (req, res) => {
 
         return res.status(200).json({ message: 'Success' })
     } catch (error) {
-        return res.status(500).json({ message: "Internal server errro" })
+        return res.status(500).json({ message: "Internal server error" })
     }
 }
 
@@ -49,11 +49,11 @@ const updateNote = async (req, res) => {
         if (!body || !body.title || !body.content) {
             return res.status(400).json({ error: 'all fields are required' })
         }
-        await updateNoteInDb({ title: body.title, content: body.content, uid: userId })
+        await updateNoteInDb(userId,id,{ title: body.title, content: body.content })
 
         return res.status(200).json({ message: 'Success' })
     } catch (error) {
-        return res.status(500).json({ message: "Internal server errro" })
+        return res.status(500).json({ message: "Internal server error" })
     }
 }
 
