@@ -26,12 +26,11 @@ const createNote = async (req, res) => {
 }
 
 const deleteNote = async (req, res) => {
-    const id = req.params.id;
+    const id = Number(req.params.id);
     const userId = req.user.user_id
-    const body = req.body
     try {
-        if (!body || !body.title || !body.content) {
-            return res.status(400).json({ error: 'all fields are required' })
+        if (!id) {
+            return res.status(400).json({ error: 'id is required' })
         }
         await deleteNoteFromDb(userId, id)
 

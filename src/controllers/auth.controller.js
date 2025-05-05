@@ -25,7 +25,7 @@ const loginController = async (req, res) => {
         const token = crypto.randomUUID()
         if (await bcrypt.compare(body.password, password)) {
             res.cookie(SESSION_NAME, token, {
-                httpOnly: false,
+                httpOnly: true,
                 sameSite: 'lax', // or 'strict'
                 secure: false,   // must be false on HTTP
                 expires: new Date(Date.now() + 900000)

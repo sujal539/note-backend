@@ -18,10 +18,10 @@ content-type: application/json
 }
 
 ###
-POST http://localhost:3455/auth/notes HTTP/1.1
+POST http://localhost:3455/auth/note HTTP/1.1
 content-type: application/json
 
 {
-    "email": "test@gmail.com",
-    "password" : "test"
+    "title": "hello",
+    "content" : "this is a test note"
 }
