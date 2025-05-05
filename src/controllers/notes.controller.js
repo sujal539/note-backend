@@ -1,10 +1,25 @@
-const { getAllNotes, addNote, updateNoteInDb, deleteNoteFromDb } = require('../../database')
+const { getAllNotes, addNote, updateNoteInDb, deleteNoteFromDb ,getNoteById} = require('../../database')
 const findAllNotes = async (req, res) => {
     const userId = req.user.user_id
 
     try {
         const notes = await getAllNotes(userId)
         return res.status(200).json(notes)
+    } catch (error) {
+        return res.status(500).json({ message: "Internal server error" })
+    }
+}
+const getById = async (req, res) => {
+    const id = Number(req.params.id);
+
+    if(!id){
+        return res.status(400).json({ message: "id is required"})
+    }
+    const userId = req.user.user_id
+
+    try {
+        const note = await getNoteById(userId,id)
+        return res.status(200).json(note)
     } catch (error) {
         return res.status(500).json({ message: "Internal server error" })
     }
@@ -56,4 +71,4 @@ const updateNote = async (req, res) => {
     }
 }
 
-module.exports = {createNote, updateNote, deleteNote, findAllNotes}
+module.exports = {createNote, updateNote, deleteNote, findAllNotes,getById}

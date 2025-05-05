@@ -109,6 +109,11 @@ const getAllNotes = async (userId) => {
     return await asyncQuery(query, [userId])
 };
 
+const getNoteById = async (userId,id) => {
+    const query = `SELECT * FROM notes WHERE uid = ? AND id = ?`;
+    return await asyncQuery(query, [userId, id])
+};
+
 /**
  * create note for a user
  * @param {*} note 
@@ -169,6 +174,14 @@ async function checkEmail(email) {
     return await asyncQuery(query, [email])
 }
 
+async function getUserByToken(token) {
+    const query = `SELECT * FROM session WHERE token = ? LIMIT 1`;
+    const sessionInfo = await asyncQuery(query, [token])
+    const queryUser = `SELECT * FROM users WHERE id = ? LIMIT 1`
+    const user = await asyncQuery(queryUser, [sessionInfo[0].user_id])
+    return {firstName: user[0].first_name, lastName: user[0].last_name, email: user[0].email}
+}
+
 async function createSession(token, userId) {
     const query = "INSERT INTO session(token, user_id) VALUES(?, ?)"
     return await asyncQuery(query, [token, userId])
@@ -190,11 +203,13 @@ module.exports = {
     createUserTable,
     initializeDatabase,
     createSession,
+    getNoteById,
     addUser,
     updateNoteInDb,
     deleteNoteFromDb,
     checkEmail,
     checkAndGetEmail,
+    getUserByToken,
     createNoteTableWithForeignKey: createNoteTable,
     createSessionTable,
     getAllNotes

@@ -1,5 +1,5 @@
 const { login, logout, register } = require('../services/auth.service')
-const { checkEmail, addUser, addNote, checkAndGetEmail, createSession } = require('../../database')
+const { checkEmail, addUser, addNote, checkAndGetEmail, createSession, getUserByToken } = require('../../database')
 const crypto = require('crypto')
 const bcrypt = require('bcrypt')
 const SESSION_NAME = "session_id"
@@ -77,6 +77,7 @@ const registerController = async (req, res) => {
 }
 
 const profileController = async (req, res) => {
+    
     if (!req.cookies) {
         return res.status(401).json({
             message: "unauthorized"
@@ -88,7 +89,9 @@ const profileController = async (req, res) => {
             message: "unauthorized"
         })
     }
-    res.send()
+    const user = await  getUserByToken(session_id)
+    res.status(200).json(user)
+    
 }
 
 
