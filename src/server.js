@@ -10,7 +10,7 @@ const cookieParser = require('cookie-parser');
 app.use(express.json());
 
 // Configure CORS
-const allowedOrigins = ['http://localhost:5501','http://127.0.0.1:5501','http://127.0.0.1:5500','http://localhost:5500']
+const allowedOrigins = ['http://localhost:5501','http://127.0.0.1:5501','http://127.0.0.1:5500','http://localhost:5500','http://localhost:5173']
 app.use(cors({
     origin:(origin,callback) => {
         if(!origin || allowedOrigins.indexOf(origin) !== -1 ){
