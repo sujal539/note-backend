@@ -9,7 +9,7 @@ const loginController = async (req, res) => {
     const body = req.body
 
     if (!body || !body.email || !body.password)
-        return res.status(400).json({ message: 'username or password invalid' })
+        return res.status(400).json({ message: 'username and password required' })
     try {
 
         let foundEmail = await checkAndGetEmail(body.email)
@@ -28,7 +28,7 @@ const loginController = async (req, res) => {
                 httpOnly: true,
                 sameSite: 'lax', // or 'strict'
                 secure: false,   // must be false on HTTP
-                expires: new Date(Date.now() + 900000)
+                expires: new Date(Date.now() + 3600000)
             })
 
             await createSession(token, foundEmail.id)
