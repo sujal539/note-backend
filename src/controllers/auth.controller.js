@@ -35,7 +35,7 @@ const loginController = async (req, res) => {
 
             res.status(200).json({ message: "Login Success", data: { userId: foundEmail.id.toString() } })
         } else {
-            return res.status(501).json({ message: "Internal server error" })
+            return res.status(500).json({ message: "Internal server error" })
         }
 
     } catch (error) {
