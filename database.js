@@ -37,7 +37,7 @@ function createNoteTable() {
             id INTEGER PRIMARY KEY AUTO_INCREMENT,
             title TEXT NOT NULL,
             content TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             uid INTEGER NOT NULL,
             FOREIGN KEY (uid) REFERENCES users(id)
         );`);
@@ -150,13 +150,9 @@ const deleteNoteFromDb = async (userId, noteId) => {
 const asyncQuery = (query, params) => {
     return new Promise((resolve, reject) => {
         db.query(query, params, (err, result) => {
-            if (err)
-                reject(err)
-
-            if (result === undefined || result === null) {
-                return reject(new Error("Unknown error occurred"));
-            }
-            resolve(result)
+            if (err) return reject(err);
+            if (!result) return reject(new Error("Unknown error occurred")); // important to return because reject will not stop the execution
+            resolve(result);
         });
     });
 }

@@ -10,8 +10,16 @@ const cookieParser = require('cookie-parser');
 app.use(express.json());
 
 // Configure CORS
-const allowedOrigins = ['http://localhost:5501', 'http://127.0.0.1:5501', 'http://192.168.57.146:5173', 'http://192.168.57.23:5173', 'http://127.0.0.1:5500', 'http://localhost:5500', 'http://localhost:5173',
-    'https://note.api.app-dev.site'
+const allowedOrigins = [
+    'http://localhost:5501',
+    'http://127.0.0.1:5501',
+    'http://192.168.57.146:5173',
+    'http://192.168.57.23:5173',
+    'http://127.0.0.1:5500',
+    'http://localhost:5500',
+    'http://localhost:5173',
+    'https://noteapp.web.app-dev.site',
+    'https://www.noteapp.web.app.site',
 ]
 app.use(cors({
     origin: (origin, callback) => {
@@ -22,8 +30,11 @@ app.use(cors({
             callback(new Error('cors policy violation'), false)
         }
     },
-    credentials: true // allow cookies to be sent
+    credentials: true, // if you're using cookies/sessions
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // all needed methods
+    allowedHeaders: ['Content-Type', 'Authorization'] // required headers
 }));
+
 
 app.use(cookieParser())
 app.use(express.urlencoded({ extended: true }))
@@ -31,6 +42,11 @@ app.use(express.urlencoded({ extended: true }))
 app.use('/auth', authRoutes)
 app.use(isAuthenticated)
 app.use('/api', noteRoutes)
+
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ error: 'Something went wrong!' });
+});
 
 
 app.listen(3455, () => {

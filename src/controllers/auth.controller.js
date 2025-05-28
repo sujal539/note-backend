@@ -14,7 +14,7 @@ const loginController = async (req, res) => {
 
         let foundEmail = await checkAndGetEmail(body.email)
 
-        if (!foundEmail) {
+        if (!foundEmail || (Array.isArray(foundEmail) && foundEmail.length === 0)) {
             return res.status(400).json({ message: "email or password incorrect!" })
         }
 
@@ -26,8 +26,8 @@ const loginController = async (req, res) => {
         if (await bcrypt.compare(body.password, password)) {
             res.cookie(SESSION_NAME, token, {
                 httpOnly: true,
-                sameSite: 'lax', // or 'strict'
-                secure: true,   // must be false on HTTP
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // or 'strict'
+                secure: process.env.NODE_ENV === 'production',  // must be false on HTTP
                 expires: new Date(Date.now() + 3600000)
             })
 
