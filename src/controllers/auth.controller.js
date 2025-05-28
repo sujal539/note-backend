@@ -27,7 +27,7 @@ const loginController = async (req, res) => {
             res.cookie(SESSION_NAME, token, {
                 httpOnly: true,
                 sameSite: 'lax', // or 'strict'
-                secure: false,   // must be false on HTTP
+                secure: true,   // must be false on HTTP
                 expires: new Date(Date.now() + 3600000)
             })
 
@@ -77,7 +77,7 @@ const registerController = async (req, res) => {
 }
 
 const profileController = async (req, res) => {
-    
+
     if (!req.cookies) {
         return res.status(401).json({
             message: "unauthorized"
@@ -89,9 +89,9 @@ const profileController = async (req, res) => {
             message: "unauthorized"
         })
     }
-    const user = await  getUserByToken(session_id)
+    const user = await getUserByToken(session_id)
     res.status(200).json(user)
-    
+
 }
 
 

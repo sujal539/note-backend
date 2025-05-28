@@ -57,9 +57,9 @@ const createSessionTable = () => {
 const createMysqlDbConnection = () => {
     const connection = mysql.createConnection({
         host: 'localhost',
-        user: process.env.DATABASE_USER,
-        password: process.env.DATABASE_PASS,
-        database: process.env.DATABASE_NAME,
+        user: process.env.NODE_ENV === 'production' ? process.env.DATABASE_USER_PROD : process.env.DATABASE_USER,
+        password: process.env.NODE_ENV === 'production' ? process.env.DATABASE_PASS_PROD : process.env.DATABASE_PASS,
+        database: process.env.NODE_ENV === 'production' ? process.env.DATABASE_NAME_PROD : process.env.DATABASE_NAME,
     });
 
 
@@ -109,7 +109,7 @@ const getAllNotes = async (userId) => {
     return await asyncQuery(query, [userId])
 };
 
-const getNoteById = async (userId,id) => {
+const getNoteById = async (userId, id) => {
     const query = `SELECT * FROM notes WHERE uid = ? AND id = ?`;
     return await asyncQuery(query, [userId, id])
 };
@@ -121,7 +121,7 @@ const getNoteById = async (userId,id) => {
  */
 const addNote = async (note) => {
     const query = "INSERT INTO notes (title, content, uid) VALUES (?, ?, ?)";
-    return  await asyncQuery(query, [note.title, note.content, note.uid])
+    return await asyncQuery(query, [note.title, note.content, note.uid])
 };
 
 /**
@@ -179,7 +179,7 @@ async function getUserByToken(token) {
     const sessionInfo = await asyncQuery(query, [token])
     const queryUser = `SELECT * FROM users WHERE id = ? LIMIT 1`
     const user = await asyncQuery(queryUser, [sessionInfo[0].user_id])
-    return {firstName: user[0].first_name, lastName: user[0].last_name, email: user[0].email}
+    return { firstName: user[0].first_name, lastName: user[0].last_name, email: user[0].email }
 }
 
 async function createSession(token, userId) {
@@ -191,7 +191,7 @@ async function checkAndGetEmail(email) {
     const query = `SELECT * FROM users WHERE email = ?`;
     return await asyncQuery(query, [email])
 }
-async function validate(token){
+async function validate(token) {
     const query = `select * from session where token = ?`
     return await asyncQuery(query, [token])
 }
