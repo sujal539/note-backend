@@ -1,38 +1,79 @@
-/**
- * * Middleware to check authentication session
- * * @param {Request} req   - The request object.
- * * @param {Response} res  - The response object.
- * * @param {Function} next - The next middleware function.
- * * @returns {void}
- * * @throws {Error} If the session is invalid or expired.
- * * @description This middleware checks if the user is authenticated by verifying the session token.
- * * If the session is valid, it calls the next middleware function. Otherwise, it returns a 401 Unauthorized response.
- * 
- */
-
 const { validate } = require("../../database");
 
-const isAuthenticated = (async (req, res, next) => {
-    if (!req.cookies) {
-        return res.status(401).json({
-            message: "unauthorized"
-        })
-    }
-    const session_id = req.cookies.session_id
-    if (!session_id) {
-        return res.status(401).json({
-            message: "unauthorized"
-        })
-    }
+// HTTP Status codes
+const HTTP_STATUS = {
+    UNAUTHORIZED: 401,
+    FORBIDDEN: 403,
+    INTERNAL_SERVER_ERROR: 500
+};
+
+// Constants
+const COOKIE_NAME = 'session_id';
+const MAX_TOKEN_LENGTH = 1000; // Reasonable maximum length for a session token
+
+/**
+ * Middleware to verify authentication session
+ * @param {import('express').Request} req - Express request object
+ * @param {import('express').Response} res - Express response object
+ * @param {import('express').NextFunction} next - Express next middleware function
+ * @returns {Promise<void>}
+ */
+const isAuthenticated = async (req, res, next) => {
     try {
-        const foundSession = await validate(session_id)
-        req.user = foundSession[0]
-        next()
+        // Check if cookies exist
+        if (!req.cookies) {
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
 
+        // Get session token
+        const sessionId = req.cookies[COOKIE_NAME];
+
+        // Validate session token existence
+        if (!sessionId) {
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                success: false,
+                message: 'Authentication required'
+            });
+        }
+
+        // Basic token validation
+        if (typeof sessionId !== 'string' ||
+            sessionId.length === 0 ||
+            sessionId.length > MAX_TOKEN_LENGTH) {
+            return res.status(HTTP_STATUS.FORBIDDEN).json({
+                success: false,
+                message: 'Invalid authentication token'
+            });
+        }
+
+        // Validate session in database
+        const foundSession = await validate(sessionId);
+
+        if (!foundSession || !Array.isArray(foundSession) || foundSession.length === 0) {
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                success: false,
+                message: 'Session expired or invalid'
+            });
+        }
+
+        // Set user information in request object
+        req.user = {
+            ...foundSession[0],
+            sessionId // Include sessionId for potential session management
+        };
+
+        // Continue to next middleware
+        next();
     } catch (error) {
-        return res.status(500).json({message: "Internal server error"})
+        console.error('Authentication error:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'Authentication service unavailable'
+        });
     }
-   
-});
+};
 
-module.exports = isAuthenticated
+module.exports = isAuthenticated;

@@ -135,7 +135,7 @@ const getById = async (req, res) => {
  * @returns {Promise<void>}
  */
 const createNote = async (req, res) => {
-    const userId = req.user?.user_id;
+    const userId = req.user?.id;
     const noteData = req.body;
 
     if (!userId) {
