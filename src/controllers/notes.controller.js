@@ -1,74 +1,293 @@
-const { getAllNotes, addNote, updateNoteInDb, deleteNoteFromDb ,getNoteById} = require('../../database')
+const {
+    getAllNotes,
+    addNote,
+    updateNoteInDb,
+    deleteNoteFromDb,
+    getNoteById
+} = require('../../database');
+
+// HTTP Status codes for consistent use
+const HTTP_STATUS = {
+    OK: 200,
+    CREATED: 201,
+    BAD_REQUEST: 400,
+    NOT_FOUND: 404,
+    INTERNAL_SERVER_ERROR: 500
+};
+
+/**
+ * Validates note data
+ * @param {Object} note - Note data to validate
+ * @returns {Object} - Validation result {isValid: boolean, error: string}
+ */
+const validateNoteData = (note) => {
+    if (!note) {
+        return { isValid: false, error: 'Note data is required' };
+    }
+
+    if (!note.title || typeof note.title !== 'string' || note.title.trim().length === 0) {
+        return { isValid: false, error: 'Title is required and must be a non-empty string' };
+    }
+
+    if (!note.content || typeof note.content !== 'string') {
+        return { isValid: false, error: 'Content is required and must be a string' };
+    }
+
+    // Trim and validate lengths
+    const trimmedTitle = note.title.trim();
+    const trimmedContent = note.content.trim();
+
+    if (trimmedTitle.length > 255) {
+        return { isValid: false, error: 'Title must be less than 255 characters' };
+    }
+
+    return {
+        isValid: true,
+        sanitizedData: {
+            title: trimmedTitle,
+            content: trimmedContent
+        }
+    };
+};
+
+/**
+ * Get all notes for a user
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
 const findAllNotes = async (req, res) => {
-    const userId = req.user.user_id
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'User ID is required'
+        });
+    }
 
     try {
-        const notes = await getAllNotes(userId)
-        return res.status(200).json(notes)
+        const notes = await getAllNotes(userId);
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            data: notes
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Internal server error" })
+        console.error('Error fetching notes:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'Failed to fetch notes'
+        });
     }
-}
+};
+
+/**
+ * Get a specific note by ID
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
 const getById = async (req, res) => {
     const id = Number(req.params.id);
+    const userId = req.user?.user_id;
 
-    if(!id){
-        return res.status(400).json({ message: "id is required"})
+    if (!userId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'User ID is required'
+        });
     }
-    const userId = req.user.user_id
+
+    if (!id || isNaN(id)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'Valid note ID is required'
+        });
+    }
 
     try {
-        const note = await getNoteById(userId,id)
-        return res.status(200).json(note)
-    } catch (error) {
-        return res.status(500).json({ message: "Internal server error" })
-    }
-}
+        const note = await getNoteById(userId, id);
 
-const createNote = async (req, res) => {
-    const userId = req.user.user_id
-    const body = req.body
-    try {
-        if (!body || !body.title || !body.content) {
-            return res.status(400).json({ error: 'all fields are required' })
+        if (!note) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({
+                success: false,
+                message: 'Note not found'
+            });
         }
-        await addNote({ title: body.title, content: body.content, uid: userId })
 
-        return res.status(200).json({ message: 'Success' })
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            data: note
+        });
     } catch (error) {
-        return res.status(500).json({ message: "Internal server error" })
+        console.error('Error fetching note:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'Failed to fetch note'
+        });
     }
-}
+};
 
+/**
+ * Create a new note
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
+const createNote = async (req, res) => {
+    const userId = req.user?.user_id;
+    const noteData = req.body;
+
+    if (!userId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'User ID is required'
+        });
+    }
+
+    const validation = validateNoteData(noteData);
+    if (!validation.isValid) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: validation.error
+        });
+    }
+
+    try {
+        const { sanitizedData } = validation;
+        await addNote({
+            title: sanitizedData.title,
+            content: sanitizedData.content,
+            uid: userId
+        });
+
+        return res.status(HTTP_STATUS.CREATED).json({
+            success: true,
+            message: 'Note created successfully'
+        });
+    } catch (error) {
+        console.error('Error creating note:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'Failed to create note'
+        });
+    }
+};
+
+/**
+ * Delete a note
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
 const deleteNote = async (req, res) => {
     const id = Number(req.params.id);
-    const userId = req.user.user_id
-    try {
-        if (!id) {
-            return res.status(400).json({ error: 'id is required' })
-        }
-        await deleteNoteFromDb(userId, id)
+    const userId = req.user?.user_id;
 
-        return res.status(200).json({ message: 'Success' })
-    } catch (error) {
-        return res.status(500).json({ message: "Internal server errro" })
+    if (!userId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'User ID is required'
+        });
     }
-}
 
+    if (!id || isNaN(id)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'Valid note ID is required'
+        });
+    }
+
+    try {
+        // First check if the note exists and belongs to the user
+        const note = await getNoteById(userId, id);
+        if (!note) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({
+                success: false,
+                message: 'Note not found'
+            });
+        }
+
+        await deleteNoteFromDb(userId, id);
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: 'Note deleted successfully'
+        });
+    } catch (error) {
+        console.error('Error deleting note:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'Failed to delete note'
+        });
+    }
+};
+
+/**
+ * Update a note
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
 const updateNote = async (req, res) => {
-    const id = req.params.id;
-    const userId = req.user.user_id
-    const body = req.body
-    try {
-        if (!body || !body.title || !body.content) {
-            return res.status(400).json({ error: 'all fields are required' })
-        }
-        await updateNoteInDb(userId,id,{ title: body.title, content: body.content })
+    const id = Number(req.params.id);
+    const userId = req.user?.user_id;
+    const noteData = req.body;
 
-        return res.status(200).json({ message: 'Success' })
-    } catch (error) {
-        return res.status(500).json({ message: "Internal server error" })
+    if (!userId) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'User ID is required'
+        });
     }
-}
 
-module.exports = {createNote, updateNote, deleteNote, findAllNotes,getById}
+    if (!id || isNaN(id)) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: 'Valid note ID is required'
+        });
+    }
+
+    const validation = validateNoteData(noteData);
+    if (!validation.isValid) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({
+            success: false,
+            message: validation.error
+        });
+    }
+
+    try {
+        // First check if the note exists and belongs to the user
+        const existingNote = await getNoteById(userId, id);
+        if (!existingNote) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({
+                success: false,
+                message: 'Note not found'
+            });
+        }
+
+        const { sanitizedData } = validation;
+        await updateNoteInDb(userId, id, {
+            title: sanitizedData.title,
+            content: sanitizedData.content
+        });
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: 'Note updated successfully'
+        });
+    } catch (error) {
+        console.error('Error updating note:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'Failed to update note'
+        });
+    }
+};
+
+module.exports = {
+    createNote,
+    updateNote,
+    deleteNote,
+    findAllNotes,
+    getById
+};

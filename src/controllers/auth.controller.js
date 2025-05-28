@@ -1,103 +1,246 @@
-const { login, logout, register } = require('../services/auth.service')
-const { checkEmail, addUser, addNote, checkAndGetEmail, createSession, getUserByToken } = require('../../database')
-const crypto = require('crypto')
-const bcrypt = require('bcrypt')
-const SESSION_NAME = "session_id"
+const { login, logout, register } = require('../services/auth.service');
+const {
+    checkEmail,
+    addUser,
+    addNote,
+    checkAndGetEmail,
+    createSession,
+    getUserByToken
+} = require('../../database');
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 
+const SESSION_NAME = "session_id";
+const HTTP_STATUS = {
+    OK: 200,
+    CREATED: 201,
+    BAD_REQUEST: 400,
+    UNAUTHORIZED: 401,
+    CONFLICT: 409,
+    INTERNAL_SERVER_ERROR: 500
+};
+
+/**
+ * Handles user login
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
 const loginController = async (req, res) => {
-
-    const body = req.body
-
-    if (!body || !body.email || !body.password)
-        return res.status(400).json({ message: 'username and password required' })
     try {
+        const { email, password } = req.body;
 
-        let foundEmail = await checkAndGetEmail(body.email)
+        // Input validation
+        if (!email || !password) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'Email and password are required'
+            });
+        }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'Invalid email format'
+            });
+        }
+
+        // Check user existence and get user data
+        let foundEmail = await checkAndGetEmail(email);
 
         if (!foundEmail || (Array.isArray(foundEmail) && foundEmail.length === 0)) {
-            return res.status(400).json({ message: "email or password incorrect!" })
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'Invalid credentials'
+            });
         }
 
         if (Array.isArray(foundEmail)) {
-            foundEmail = foundEmail[0]
-        }
-        const { password } = foundEmail
-        const token = crypto.randomUUID()
-        if (await bcrypt.compare(body.password, password)) {
-            res.cookie(SESSION_NAME, token, {
-                httpOnly: true,
-                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // or 'strict'
-                secure: process.env.NODE_ENV === 'production',  // must be false on HTTP
-                expires: new Date(Date.now() + 3600000)
-            })
-
-            await createSession(token, foundEmail.id)
-
-            res.status(200).json({ message: "Login Success", data: { userId: foundEmail.id.toString() } })
-        } else {
-            return res.status(500).json({ message: "Internal server error" })
+            foundEmail = foundEmail[0];
         }
 
-    } catch (error) {
-        console.error("Login error:", error);
-        return res.status(500).json({ message: "Internal server error" });
-    }
-}
+        // Password verification
+        const isPasswordValid = await bcrypt.compare(password, foundEmail.password);
 
-
-const registerController = async (req, res) => {
-    const user = req.body
-    if (!user.firstName || !user.lastName || !user.email || !user.password)
-        return res.status(400).json({ message: "all fields are required" })
-
-    try {
-        const existingUsers = await checkEmail(user.email)
-        if (existingUsers.length > 0) {
-            return res.status(409).json({
-                message: "User already exists",
+        if (!isPasswordValid) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'Invalid credentials'
             });
         }
 
-        const created = await addUser(user)
+        // Generate session token
+        const token = crypto.randomUUID();
+
+        // Set secure cookie
+        res.cookie(SESSION_NAME, token, {
+            httpOnly: true,
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            expires: new Date(Date.now() + 3600000), // 1 hour
+            path: '/'
+        });
+
+        // Create session
+        await createSession(token, foundEmail.id);
+
+        // Send success response
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: 'Login successful',
+            data: {
+                userId: foundEmail.id.toString()
+            }
+        });
+
+    } catch (error) {
+        console.error('Login error:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'An error occurred during login'
+        });
+    }
+};
+
+/**
+ * Handles user registration
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
+const registerController = async (req, res) => {
+    try {
+        const { firstName, lastName, email, password } = req.body;
+
+        // Input validation
+        if (!firstName || !lastName || !email || !password) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'All fields are required: firstName, lastName, email, password'
+            });
+        }
+
+        // Email format validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'Invalid email format'
+            });
+        }
+
+        // Password strength validation
+        if (password.length < 8) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'Password must be at least 8 characters long'
+            });
+        }
+
+        // Check for existing user
+        const existingUsers = await checkEmail(email);
+        if (existingUsers.length > 0) {
+            return res.status(HTTP_STATUS.CONFLICT).json({
+                success: false,
+                message: 'User already exists'
+            });
+        }
+
+        // Create user
+        const created = await addUser({ firstName, lastName, email, password });
 
         if (!created) {
-            throw new Error("Internal server error")
+            throw new Error('Failed to create user');
         }
-        else {
-            return res.status(201).json({
-                message: "user registration is completed",
+
+        return res.status(HTTP_STATUS.CREATED).json({
+            success: true,
+            message: 'User registration completed successfully'
+        });
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'An error occurred during registration'
+        });
+    }
+};
+
+/**
+ * Handles user profile retrieval
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
+const profileController = async (req, res) => {
+    try {
+        if (!req.cookies || !req.cookies[SESSION_NAME]) {
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                success: false,
+                message: 'Authentication required'
             });
         }
 
+        const user = await getUserByToken(req.cookies[SESSION_NAME]);
+
+        if (!user) {
+            return res.status(HTTP_STATUS.UNAUTHORIZED).json({
+                success: false,
+                message: 'Invalid or expired session'
+            });
+        }
+
+        // Remove sensitive information
+        delete user.password;
+
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            data: user
+        });
+
     } catch (error) {
-        return res.status(500).json({
-            message: error.message,
-        })
+        console.error('Profile retrieval error:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'An error occurred while retrieving profile'
+        });
     }
-}
+};
 
-const profileController = async (req, res) => {
-
-    if (!req.cookies) {
-        return res.status(401).json({
-            message: "unauthorized"
-        })
-    }
-    const session_id = req.cookies.session_id
-    if (!session_id) {
-        return res.status(401).json({
-            message: "unauthorized"
-        })
-    }
-    const user = await getUserByToken(session_id)
-    res.status(200).json(user)
-
-}
-
-
+/**
+ * Handles user logout
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ * @returns {Promise<void>}
+ */
 const logoutController = async (req, res) => {
-    res.clearCookie(SESSION_NAME, { path: '/' });
-    return res.status(200).send("Logout successful!")
-}
+    try {
+        res.clearCookie(SESSION_NAME, {
+            path: '/',
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        });
 
-module.exports = { loginController, registerController, logoutController, profileController }
+        return res.status(HTTP_STATUS.OK).json({
+            success: true,
+            message: 'Logout successful'
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+        return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+            success: false,
+            message: 'An error occurred during logout'
+        });
+    }
+};
+
+module.exports = {
+    loginController,
+    registerController,
+    profileController,
+    logoutController
+};
