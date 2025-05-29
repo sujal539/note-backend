@@ -38,5 +38,5 @@ jobs:
           password: ${{ secrets.FTP_PASSWORD }}
           protocol: ftp
           port: 21
-          local-dir: ./  # Adjust if you only want to upload `dist` or `build`
+          local-dir: ./ 
           server-dir: /home/appdevsi/demo-note-app/  # Update to your target directory
