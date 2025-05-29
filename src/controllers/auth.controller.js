@@ -9,6 +9,7 @@ const {
 } = require('../../database');
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
+const logger = require('../utils/logger');
 
 const SESSION_NAME = "session_id";
 const HTTP_STATUS = {
@@ -28,10 +29,20 @@ const HTTP_STATUS = {
  */
 const loginController = async (req, res) => {
     try {
+        logger.info('Login attempt', {
+            email: req.body.email,
+            ip: req.ip
+        });
+
         const { email, password } = req.body;
 
         // Input validation
         if (!email || !password) {
+            logger.warn('Login attempt with missing credentials', {
+                email: !!email,
+                password: !!password,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: 'Email and password are required'
@@ -41,6 +52,10 @@ const loginController = async (req, res) => {
         // Email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
+            logger.warn('Login attempt with invalid email format', {
+                email,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: 'Invalid email format'
@@ -51,6 +66,10 @@ const loginController = async (req, res) => {
         let foundEmail = await checkAndGetEmail(email);
 
         if (!foundEmail || (Array.isArray(foundEmail) && foundEmail.length === 0)) {
+            logger.warn('Login attempt with non-existent email', {
+                email,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: 'Invalid credentials'
@@ -65,6 +84,11 @@ const loginController = async (req, res) => {
         const isPasswordValid = await bcrypt.compare(password, foundEmail.password);
 
         if (!isPasswordValid) {
+            logger.warn('Login attempt with invalid password', {
+                email,
+                userId: foundEmail.id,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: 'Invalid credentials'
@@ -86,6 +110,12 @@ const loginController = async (req, res) => {
         // Create session
         await createSession(token, foundEmail.id);
 
+        logger.info('Login successful', {
+            userId: foundEmail.id,
+            email,
+            ip: req.ip
+        });
+
         // Send success response
         return res.status(HTTP_STATUS.OK).json({
             success: true,
@@ -96,7 +126,12 @@ const loginController = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Login error:', error);
+        logger.error('Login error', {
+            error: error.message,
+            stack: error.stack,
+            email: req.body?.email,
+            ip: req.ip
+        });
         return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
             success: false,
             message: 'An error occurred during login'
@@ -112,10 +147,22 @@ const loginController = async (req, res) => {
  */
 const registerController = async (req, res) => {
     try {
+        logger.info('Registration attempt', {
+            email: req.body.email,
+            ip: req.ip
+        });
+
         const { firstName, lastName, email, password } = req.body;
 
         // Input validation
         if (!firstName || !lastName || !email || !password) {
+            logger.warn('Registration attempt with missing fields', {
+                firstName: !!firstName,
+                lastName: !!lastName,
+                email: !!email,
+                password: !!password,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: 'All fields are required: firstName, lastName, email, password'
@@ -125,6 +172,10 @@ const registerController = async (req, res) => {
         // Email format validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
+            logger.warn('Registration attempt with invalid email format', {
+                email,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: 'Invalid email format'
@@ -133,6 +184,11 @@ const registerController = async (req, res) => {
 
         // Password strength validation
         if (password.length < 8) {
+            logger.warn('Registration attempt with weak password', {
+                email,
+                passwordLength: password.length,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.BAD_REQUEST).json({
                 success: false,
                 message: 'Password must be at least 8 characters long'
@@ -142,6 +198,10 @@ const registerController = async (req, res) => {
         // Check for existing user
         const existingUsers = await checkEmail(email);
         if (existingUsers.length > 0) {
+            logger.warn('Registration attempt with existing email', {
+                email,
+                ip: req.ip
+            });
             return res.status(HTTP_STATUS.CONFLICT).json({
                 success: false,
                 message: 'User already exists'
@@ -155,13 +215,23 @@ const registerController = async (req, res) => {
             throw new Error('Failed to create user');
         }
 
+        logger.info('Registration successful', {
+            email,
+            ip: req.ip
+        });
+
         return res.status(HTTP_STATUS.CREATED).json({
             success: true,
             message: 'User registration completed successfully'
         });
 
     } catch (error) {
-        console.error('Registration error:', error);
+        logger.error('Registration error', {
+            error: error.message,
+            stack: error.stack,
+            email: req.body?.email,
+            ip: req.ip
+        });
         return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
             success: false,
             message: 'An error occurred during registration'
@@ -178,15 +248,24 @@ const registerController = async (req, res) => {
 const profileController = async (req, res) => {
     try {
         if (!req.cookies || !req.cookies[SESSION_NAME]) {
+            logger.warn('Profile access attempt without session cookie', {
+                ip: req.ip,
+                cookies: !!req.cookies
+            });
             return res.status(HTTP_STATUS.UNAUTHORIZED).json({
                 success: false,
                 message: 'Authentication required'
             });
         }
 
-        const user = await getUserByToken(req.cookies[SESSION_NAME]);
+        const sessionToken = req.cookies[SESSION_NAME];
+        const user = await getUserByToken(sessionToken);
 
         if (!user) {
+            logger.warn('Profile access attempt with invalid session', {
+                ip: req.ip,
+                sessionToken
+            });
             return res.status(HTTP_STATUS.UNAUTHORIZED).json({
                 success: false,
                 message: 'Invalid or expired session'
@@ -196,13 +275,23 @@ const profileController = async (req, res) => {
         // Remove sensitive information
         delete user.password;
 
+        logger.info('Profile retrieved successfully', {
+            userId: user.id,
+            ip: req.ip
+        });
+
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             data: user
         });
 
     } catch (error) {
-        console.error('Profile retrieval error:', error);
+        logger.error('Profile retrieval error', {
+            error: error.message,
+            stack: error.stack,
+            sessionToken: req.cookies?.[SESSION_NAME],
+            ip: req.ip
+        });
         return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
             success: false,
             message: 'An error occurred while retrieving profile'
@@ -218,6 +307,13 @@ const profileController = async (req, res) => {
  */
 const logoutController = async (req, res) => {
     try {
+        const sessionToken = req.cookies?.[SESSION_NAME];
+
+        logger.info('Logout attempt', {
+            sessionToken: !!sessionToken,
+            ip: req.ip
+        });
+
         res.clearCookie(SESSION_NAME, {
             path: '/',
             httpOnly: true,
@@ -225,12 +321,22 @@ const logoutController = async (req, res) => {
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
         });
 
+        logger.info('Logout successful', {
+            sessionToken: !!sessionToken,
+            ip: req.ip
+        });
+
         return res.status(HTTP_STATUS.OK).json({
             success: true,
             message: 'Logout successful'
         });
     } catch (error) {
-        console.error('Logout error:', error);
+        logger.error('Logout error', {
+            error: error.message,
+            stack: error.stack,
+            sessionToken: req.cookies?.[SESSION_NAME],
+            ip: req.ip
+        });
         return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
             success: false,
             message: 'An error occurred during logout'

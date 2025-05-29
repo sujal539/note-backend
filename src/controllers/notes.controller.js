@@ -56,27 +56,77 @@ const validateNoteData = (note) => {
  * @param {Object} res - Express response object
  * @returns {Promise<void>}
  */
+// Import the logger
+const logger = require('../utils/logger');
+
 const findAllNotes = async (req, res) => {
-    const userId = req.user?.userId;
-
-    if (!userId) {
-        return res.status(HTTP_STATUS.BAD_REQUEST).json({
-            success: false,
-            message: 'User ID is required'
-        });
-    }
-
     try {
-        const notes = await getAllNotes(userId);
-        return res.status(HTTP_STATUS.OK).json({
-            success: true,
-            data: notes
+        // Log request details
+        logger.info('findAllNotes request received', {
+            user: req.user,
+            cookies: req.cookies,
+            headers: req.headers
         });
-    } catch (error) {
-        console.error('Error fetching notes:', error);
+
+        const userId = req.user?.userId;
+
+        // Log userId information
+        logger.info('User ID extraction', {
+            userId,
+            type: typeof userId
+        });
+
+        if (!userId) {
+            logger.warn('User ID missing from request');
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                success: false,
+                message: 'User ID is required'
+            });
+        }
+
+        try {
+            // Log database call attempt
+            logger.info('Attempting to fetch notes', { userId });
+
+            const notes = await getAllNotes(userId);
+
+            // Log successful retrieval
+            logger.info('Notes retrieved successfully', {
+                userId,
+                noteCount: notes?.length
+            });
+
+            return res.status(HTTP_STATUS.OK).json({
+                success: true,
+                data: notes
+            });
+        } catch (error) {
+            // Log database error with details
+            logger.error('Database error in findAllNotes', {
+                error: error.message,
+                stack: error.stack,
+                userId,
+                errorCode: error.code,
+                sqlMessage: error.sqlMessage
+            });
+
+            return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+                success: false,
+                message: process.env.NODE_ENV === 'development'
+                    ? `Failed to fetch notes: ${error.message}`
+                    : 'Failed to fetch notes'
+            });
+        }
+    } catch (outer_error) {
+        // Log unexpected errors
+        logger.error('Unexpected error in findAllNotes', {
+            error: outer_error.message,
+            stack: outer_error.stack
+        });
+
         return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
             success: false,
-            message: 'Failed to fetch notes'
+            message: 'An unexpected error occurred'
         });
     }
 };
