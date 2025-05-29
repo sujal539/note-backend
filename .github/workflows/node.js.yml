@@ -1,33 +1,28 @@
-on: 
-    push:
-        branches:
-        - main
 name: 🚀 Deploy website on push
+
+on: 
+  push:
+    branches:
+      - main
+
 jobs:
   web-deploy:
     name: 🎉 Deploy
     runs-on: ubuntu-latest
+
     steps:
     - name: 🚚 Get latest code
       uses: actions/checkout@v3
-    - name: Use Node.js 20
-      uses: actions/setup-node@v2
-      with:
-        node-version: '20'
-        # cache: 'npm'
-    - name: 🔨 Build Project
-      run: |
-        npm install
-        npm run build
+
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@4.3.3
       with:
-        local-dir: ./dist/
+        local-dir: ./
         server: ${{ secrets.FTP_HOST }}
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
-        protocol: ftp,
-        port: 21,
+        protocol: ftp
+        port: 21
         server-dir: /home/appdevsi/demo-note-app/
         exclude: |
           **/.git*
