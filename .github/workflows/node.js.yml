@@ -26,6 +26,19 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
         cache: 'npm'
+    - name: Install dependencies
+      run: npm install
+    
     - run: npm ci
     - run: npm run build --if-present
     - run: npm test
+    - name: Upload files via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftp
+          port: 21
+          local-dir: ./  # Adjust if you only want to upload `dist` or `build`
+          server-dir: /home/appdevsi/demo-note-app/  # Update to your target directory
