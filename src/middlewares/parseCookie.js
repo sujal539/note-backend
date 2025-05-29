@@ -49,10 +49,10 @@ const isAuthenticated = async (req, res, next) => {
             });
         }
 
-        // Validate session in database
-        const foundSession = await validate(sessionId);
+        // Validate session in database and get user information
+        const sessionInfo = await validate(sessionId);
 
-        if (!foundSession || !Array.isArray(foundSession) || foundSession.length === 0) {
+        if (!sessionInfo) {
             return res.status(HTTP_STATUS.UNAUTHORIZED).json({
                 success: false,
                 message: 'Session expired or invalid'
@@ -61,8 +61,12 @@ const isAuthenticated = async (req, res, next) => {
 
         // Set user information in request object
         req.user = {
-            ...foundSession[0],
-            sessionId // Include sessionId for potential session management
+            sessionId,
+            userId: sessionInfo.user_id,
+            firstName: sessionInfo.first_name,
+            lastName: sessionInfo.last_name,
+            email: sessionInfo.email,
+            session_id: sessionInfo.session_id
         };
 
         // Continue to next middleware

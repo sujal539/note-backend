@@ -374,9 +374,9 @@ const checkAndGetEmail = async (email) => {
 };
 
 /**
- * Validate session token
+ * Validate session token and return user information
  * @param {string} token - Session token
- * @returns {Promise<boolean>} Validation result
+ * @returns {Promise<Object>} User session information
  */
 const validate = async (token) => {
     if (!token) {
@@ -384,12 +384,19 @@ const validate = async (token) => {
     }
 
     const query = `
-        SELECT 1 FROM session 
-        WHERE token = ? AND expires_at > NOW() 
+        SELECT s.id as session_id, s.user_id, u.first_name, u.last_name, u.email
+        FROM session s
+        JOIN users u ON s.user_id = u.id
+        WHERE s.token = ? AND s.expires_at > NOW()
         LIMIT 1
     `;
+
     const results = await asyncQuery(query, [token]);
-    return results.length > 0;
+    if (!results || results.length === 0) {
+        return null;
+    }
+
+    return results[0];
 };
 
 // Clean up expired sessions periodically

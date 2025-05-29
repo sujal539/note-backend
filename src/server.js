@@ -30,10 +30,13 @@ app.use(cors({
             callback(new Error('cors policy violation'), false)
         }
     },
-    credentials: true, // if you're using cookies/sessions
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // all needed methods
-    allowedHeaders: ['Content-Type', 'Authorization'] // required headers
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
+
+// Add OPTIONS handling for preflight requests
+app.options('*', cors());
 
 
 app.use(cookieParser())

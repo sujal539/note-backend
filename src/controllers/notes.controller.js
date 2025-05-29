@@ -57,7 +57,7 @@ const validateNoteData = (note) => {
  * @returns {Promise<void>}
  */
 const findAllNotes = async (req, res) => {
-    const userId = req.user?.user_id;
+    const userId = req.user?.userId;
 
     if (!userId) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -89,7 +89,7 @@ const findAllNotes = async (req, res) => {
  */
 const getById = async (req, res) => {
     const id = Number(req.params.id);
-    const userId = req.user?.user_id;
+    const userId = req.user?.userId;
 
     if (!userId) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -135,7 +135,7 @@ const getById = async (req, res) => {
  * @returns {Promise<void>}
  */
 const createNote = async (req, res) => {
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const noteData = req.body;
 
     if (!userId) {
@@ -182,7 +182,7 @@ const createNote = async (req, res) => {
  */
 const deleteNote = async (req, res) => {
     const id = Number(req.params.id);
-    const userId = req.user?.user_id;
+    const userId = req.user?.userId;
 
     if (!userId) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -229,8 +229,9 @@ const deleteNote = async (req, res) => {
  * @returns {Promise<void>}
  */
 const updateNote = async (req, res) => {
-    const id = Number(req.params.id);
-    const userId = req.user?.user_id;
+    const id =
+        Number(req.params.id);
+    const userId = req.user?.userId;
     const noteData = req.body;
 
     if (!userId) {
