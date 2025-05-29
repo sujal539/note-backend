@@ -23,7 +23,6 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         protocol: ftp
         port: 21
-        server-dir: /home/appdevsi/demo-note-app/
         exclude: |
           **/.git*
           **/.git*/**
